@@ -1,0 +1,68 @@
+---
+author: "Nick Shannon"
+date: "September 19, 2021"
+output: html_document
+---
+<!-- R setup libraries, using python -->
+```{r setup, include=FALSE, echo=FALSE}
+library(reticulate)
+library(knitr)
+use_python("/usr/bin/python3")
+```
+<!-- Python imports -->
+```{python, echo=FALSE}
+# Imports
+import finviz as fv
+import yfinance as yf
+import matplotlib.pyplot as plt
+import pandas as pd
+```
+
+# Sample Report
+
+## Market Profile
+```{python, echo=FALSE}
+# Market Profile Table
+TICKER = 'MSFT'
+stock_info = fv.get_stock(TICKER)
+
+mkt_profile = {}
+#print(stock_info)
+#print(stock_info.keys())
+
+mkt_profile['Price'] = float(stock_info['Price'])
+mkt_profile['Beta'] = float(stock_info['Beta'])
+mkt_profile['Market Cap'] = str(stock_info['Market Cap'])
+mkt_profile['P/E'] = float(stock_info['P/E'])
+mkt_profile['P/B'] = float(stock_info['P/B'])
+mkt_profile['EPS (ttm)'] = float(stock_info['EPS (ttm)'])
+mkt_profile['ROE'] = str(stock_info['ROE'])
+mkt_profile['ROI'] = str(stock_info['ROI'])
+
+
+
+mkt = pd.DataFrame.from_dict(mkt_profile, orient='index', columns=[''])
+#print(mkt)
+
+```
+
+```{r echo=FALSE, results='asis'}
+kable(py$mkt, caption=cat(py$TICKER," Profile"))
+```
+
+## Stock Chart
+```{python, echo=FALSE}
+# yfinance for price history
+TICKER = 'MSFT'
+stock = yf.Ticker(TICKER)
+hist = stock.history(period='6mo', interval='1d')
+df = pd.DataFrame(data=hist, columns=['Close'])
+df.reset_index(inplace=True)
+
+# Plot
+plt.plot(df['Date'], df['Close'])
+plt.title(f'{TICKER} Price History')
+plt.xlabel('Date')
+plt.ylabel('Price')
+plt.show()
+```
