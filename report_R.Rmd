@@ -35,6 +35,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from datetime import date
+import re
 ```
 
 <!-- Table -->
@@ -67,6 +68,29 @@ ROE = ROE[:-1]
 ROI = ROI[:-1]
 mkt = pd.DataFrame.from_dict(mkt_profile, orient='index', columns=[''])
 
+# Format ticker news
+news = fv.get_news(TICKER)
+
+story1_date=news[0][0]
+story1_short=news[0][1]
+story1_link=news[0][2]
+
+story2_date=news[1][0]
+story2_short=news[1][1]
+story2_link=news[1][2]
+
+story3_date=news[2][0]
+story3_short=news[2][1]
+story3_link=news[2][2]
+
+story4_date=news[3][0]
+story4_short=news[3][1]
+story4_link=news[3][2]
+
+story5_date=news[3][0]
+story5_short=news[3][1]
+story5_link=news[3][2]
+#print(story1_date)
 ```
 
 <!-- Charts -->
@@ -89,41 +113,84 @@ def price_chart(ticker):
   
 # Generic barplot
 def bar_plots(df, x, y, color, title, file_name):
-  sns.barplot(data=df, x=x, y=y, color=color)
-  plt.title(title)
+  fig = plt.figure(figsize = (5, 4))
+  ax = sns.barplot(data=df, x=x, y=y, color=color)
+  sns.despine()
+  plt.bar_label(ax.containers[0])
+  plt.title(title, pad=15)
   plt.savefig(file_name, bbox_inches='tight')
 
+def stacked_bar(df, x, y1, y2, color, title, file_name):
+  fig, ax = plt.subplots(figsize=(5,4))
+  
+  ax.bar(x, y1, color=color[0], label='Revenue')
+  ax.bar(x, y2, color=color[1], bottom=y1, label='Earnings')
+  
+  ax.spines['right'].set_visible(False)
+  ax.spines['top'].set_visible(False)
+  
+  plt.bar_label(ax.containers[1])
+  ax.set_title(title, pad=15)
+  ax.legend()
+  #plt.title(title, pad=15)
+  plt.savefig(file_name, bbox_inches='tight')
 ### Run ###
 
 TICKER = 'MSFT'
 stock = yf.Ticker(TICKER)
 fin = stock.financials
+bal = stock.balance_sheet
+cash = stock.cashflow
+earn = stock.earnings
+splits = stock.splits
+# Create data frames
 financial_data = pd.DataFrame(data=fin)
+balance_data = pd.DataFrame(data=bal)
+cashflow_data = pd.DataFrame(data=cash)
+earnings_data = pd.DataFrame(data=earn)
 
-print(stock.info)
+# Stock Summary and News
 summary = stock.info['longBusinessSummary']
+
 # Date x-axis data
 curr_year = int(date.today().year) 
-dt = ['{}-05'.format(curr_year), '{}-05'.format(curr_year-1), '{}-05'.format(curr_year-2), '{}-05'.format(curr_year-3)]
+dt = ['{}'.format(curr_year), '{}'.format(curr_year-1), '{}'.format(curr_year-2), '{}'.format(curr_year-3)]
 # Financials
 gross = [financial_data.loc['Gross Profit'][i]/1000000 for i in range(4)]
 ebit = [financial_data.loc['Ebit'][i]/1000000 for i in range(4)]
+debt_short = [balance_data.loc['Short Long Term Debt'][i]/1000000 for i in range(4)]
+debt_long = [balance_data.loc['Long Term Debt'][i]/1000000 for i in range(4)]
+revenue = [earnings_data.iloc[i][0]/1000000 for i in range(4)]
+earnings = [earnings_data.iloc[i][1]/1000000 for i in range(4)]
 
-# Save charts
+operating_cash = cashflow_data.loc['Total Cash From Operating Activities']
+capital_expend = cashflow_data.loc['Capital Expenditures']
+fcf = []
+# Calculate Free Cash Flows (operating cash - capex)
+for (op_cash, capex) in zip(operating_cash, capital_expend):
+  fcf.append(op_cash/1000000 - capex/1000000)
+
+### Save charts ###
+print(fcf)
+
+# Financial
 price_chart(TICKER)
 bar_plots(financial_data, dt, gross, '#FEBD18', 'Gross Profit ($ millions)', './rif-logos/gross-profit.png')
-bar_plots(financial_data, dt, ebit, '#FEBD18', 'EBIT ($ millions)', './rif-logos/ebit.png')
+bar_plots(financial_data, dt, ebit, '#800000', 'EBIT ($ millions)', './rif-logos/ebit.png')
+
+# Balance sheet
+bar_plots(balance_data, dt, debt_short, '#800000', 'Short Long Term Debt ($ millions)', './rif-logos/debt_short.png')
+bar_plots(balance_data, dt, debt_long, '#FEBD18', 'Long Term Debt ($ millions)', './rif-logos/debt_long.png')
+
+# Cashflow
+bar_plots(cashflow_data, dt, fcf, '#FEBD18', 'Free Cash Flow ($ millions)', './rif-logos/fcf.png')
+
+# Earnings data
+stacked_bar(earnings_data, dt, revenue, earnings, ('#800000','#363636'), 'Revenue/Earnings ($ millions)', './rif-logos/revenue_earnings.png')
 ```
 
 <!-- Start of Document -->
 
-<!-- Logo 
-\vspace{5cm}
-\begin{figure}[h!]
-  \centering
-  \includegraphics[width=16cm, height=24cm]{RIF-Logo-(MaroonTransparentBackground).png}
-\end{figure}
--->
 \vspace{-0.5cm}
 
 \begin{figure}[h]
@@ -166,11 +233,29 @@ bar_plots(financial_data, dt, ebit, '#FEBD18', 'EBIT ($ millions)', './rif-logos
 
 \section*{Financials}
 
+<!-- Rev/Gross Profits-->
 \begin{figure}
 \centering
 \begin{minipage}{.5\textwidth}
   \centering
+  \includegraphics[width=\linewidth]{"./rif-logos/revenue_earnings.png"}
+  \label{fig:gp}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+  \centering
   \includegraphics[width=\linewidth]{"./rif-logos/gross-profit.png"}
+  \label{fig:ebit}
+\end{minipage}
+\end{figure}
+
+\newpage
+
+\begin{figure}
+% FCF - EBIT 
+\centering
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{"./rif-logos/fcf.png"}
   \label{fig:gp}
 \end{minipage}%
 \begin{minipage}{.5\textwidth}
@@ -178,22 +263,36 @@ bar_plots(financial_data, dt, ebit, '#FEBD18', 'EBIT ($ millions)', './rif-logos
   \includegraphics[width=\linewidth]{"./rif-logos/ebit.png"}
   \label{fig:ebit}
 \end{minipage}
+% Short Debt - Long Debt
+\centering
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{"./rif-logos/debt_short.png"}
+  \label{fig:gp}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{"./rif-logos/debt_long.png"}
+  \label{fig:ebit}
+\end{minipage}
 \end{figure}
 
-<!--
-\begin{figure}[h]
-\includegraphics[width=\textwidth]{"./rif-logos/financials.png"}
-\label{fig:matrix}
-\end{figure}
--->
-<!--
-\section*{Gross Profits}
-```{r, echo=FALSE}
-knitr::include_graphics("./rif-logos/gross-profit.png")
-```
+\section*{Recent News}
 
-\section*{EBIT}
-```{r, echo=FALSE}
-knitr::include_graphics("./rif-logos/ebit.png")
-```
+*WiP: Need to use regex to add escape characters when not an alphanumeric*
+<!--
+\begin{table}[h] 
+  \label{tab:table1} 
+  \begin{tabular}{p{5cm}p{5cm}p{6cm}}
+      \hline
+      \multicolumn{3}{c}{`r py$TICKER` News} \\
+      \hline
+      `r py$story1_date` & `r py$story1_short` & `r py$story1_link` \\
+      `r py$story2_date` & `r py$story2_short` & `r py$story2_link` \\
+      `r py$story3_date` & `r py$story3_short` & `r py$story3_link` \\
+      `r py$story4_date` & `r py$story4_short` & `r py$story4_link` \\
+      `r py$story5_date` & `r py$story5_short` & `r py$story5_link` \\
+      \hline
+  \end{tabular}
+\end{table}
 -->
