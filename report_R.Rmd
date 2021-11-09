@@ -11,13 +11,27 @@ header-includes:
   - \usepackage{subcaption}
   - \usepackage{multicol}
   - \usepackage{float}
+  - \usepackage{hyperref}
+  - \usepackage{listings}
 
 fontsize: 12pt
 ---
 
 <!-- LaTeX preamble-->
 \graphicspath{ {./rif-logos/} }
-
+<!-- Listings setup -->
+\lstset{
+  basicstyle=\small\ttfamily,
+  columns=flexible,
+  breaklines=true
+}
+<!-- Hyperlinks -->
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  filecolor=magenta,      
+  urlcolor=cyan,
+}
 <!-- R setup libraries, using python (html_document)-->
 ```{r setup, include=FALSE, echo=FALSE}
 library(reticulate)
@@ -34,11 +48,19 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from datetime import date
 import re
+import pytz
+import datetime
+from datetime import date
 ```
 
-<!-- Table -->
+<!--
+```{r, echo=FALSE, message=FALSE, results='hide'} 
+
+#py_run_file("main.py")
+
+```
+-->
 ```{python, echo=FALSE}
 TICKER = 'MSFT'
 stock_info = fv.get_stock(TICKER)
@@ -87,13 +109,12 @@ story4_date=news[3][0]
 story4_short=news[3][1]
 story4_link=news[3][2]
 
-story5_date=news[3][0]
-story5_short=news[3][1]
-story5_link=news[3][2]
-#print(story1_date)
+story5_date=news[4][0]
+story5_short=news[4][1]
+story5_link=news[4][2]
+
 ```
 
-<!-- Charts -->
 ```{python, echo=FALSE, message=FALSE, results='hide'}
 
 ### Definitions ###
@@ -132,7 +153,6 @@ def stacked_bar(df, x, y1, y2, color, title, file_name):
   plt.bar_label(ax.containers[1])
   ax.set_title(title, pad=15)
   ax.legend()
-  #plt.title(title, pad=15)
   plt.savefig(file_name, bbox_inches='tight')
 ### Run ###
 
@@ -189,6 +209,7 @@ bar_plots(cashflow_data, dt, fcf, '#FEBD18', 'Free Cash Flow ($ millions)', './r
 stacked_bar(earnings_data, dt, revenue, earnings, ('#800000','#363636'), 'Revenue/Earnings ($ millions)', './rif-logos/revenue_earnings.png')
 ```
 
+
 <!-- Start of Document -->
 
 \vspace{-0.5cm}
@@ -233,7 +254,7 @@ stacked_bar(earnings_data, dt, revenue, earnings, ('#800000','#363636'), 'Revenu
 
 \section*{Financials}
 
-<!-- Rev/Gross Profits-->
+% Rev/Gross Profits
 \begin{figure}
 \centering
 \begin{minipage}{.5\textwidth}
@@ -277,21 +298,48 @@ stacked_bar(earnings_data, dt, revenue, earnings, ('#800000','#363636'), 'Revenu
 \end{minipage}
 \end{figure}
 
+
 \section*{Recent News}
 
-*WiP: Need to use regex to add escape characters when not an alphanumeric*
+`r py$story1_date` \null\hfill \href{`r py$story1_link`}{[Article Link]}
+\begin{lstlisting}
+`r py$story1_short`
+\end{lstlisting}
+
+`r py$story2_date` \null\hfill \href{`r py$story2_link`}{[Article Link]}
+\begin{lstlisting}
+`r py$story2_short`
+\end{lstlisting}
+
+`r py$story3_date` \null\hfill \href{`r py$story3_link`}{[Article Link]}
+\begin{lstlisting}
+`r py$story3_short`
+\end{lstlisting}
+
+`r py$story4_date` \null\hfill \href{`r py$story4_link`}{[Article Link]}
+\begin{lstlisting}
+`r py$story4_short`
+\end{lstlisting}
+
+`r py$story5_date` \null\hfill \href{`r py$story5_link`}{[Article Link]}
+\begin{lstlisting}
+`r py$story5_short`
+\end{lstlisting}
+
 <!--
+
+\newpage
 \begin{table}[h] 
   \label{tab:table1} 
-  \begin{tabular}{p{5cm}p{5cm}p{6cm}}
+  \begin{tabular}{p{3cm}p{8cm}p{8cm}}
       \hline
       \multicolumn{3}{c}{`r py$TICKER` News} \\
       \hline
-      `r py$story1_date` & `r py$story1_short` & `r py$story1_link` \\
-      `r py$story2_date` & `r py$story2_short` & `r py$story2_link` \\
-      `r py$story3_date` & `r py$story3_short` & `r py$story3_link` \\
-      `r py$story4_date` & `r py$story4_short` & `r py$story4_link` \\
-      `r py$story5_date` & `r py$story5_short` & `r py$story5_link` \\
+      \verb|`r py$story1_date`| &  \verb|`r py$story1_short`| & \href{`r py$story1_link`}{link} \\
+      \verb|`r py$story2_date`| & \verb|`r py$story2_short`| & \href{`r py$story2_link`}{link} \\
+      \verb|`r py$story3_date`| & \verb|`r py$story3_short`| & \href{`r py$story3_link`}{link} \\
+      \verb|`r py$story4_date`| & \verb|`r py$story4_short`| & \href{`r py$story4_link`}{link} \\
+      \verb|`r py$story5_date`| & \verb|`r py$story5_short`| & \href{`r py$story5_link`}{link} \\
       \hline
   \end{tabular}
 \end{table}
