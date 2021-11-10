@@ -17,6 +17,19 @@ header-includes:
 fontsize: 12pt
 ---
 
+<!-- R setup libraries, using python -->
+```{r setup, include=FALSE, echo=FALSE}
+library(reticulate)
+use_python("/usr/bin/python3")
+```
+
+<!-- Execute python scripts-->
+```{r, echo=FALSE, message=FALSE, results='hide'} 
+
+source_python("main.py")
+
+```
+
 <!-- LaTeX preamble-->
 \graphicspath{ {./rif-logos/} }
 <!-- Listings setup -->
@@ -32,193 +45,14 @@ fontsize: 12pt
   filecolor=magenta,      
   urlcolor=cyan,
 }
-<!-- R setup libraries, using python (html_document)-->
-```{r setup, include=FALSE, echo=FALSE}
-library(reticulate)
-library(knitr)
-library(kableExtra)
-library(xtable)
-use_python("/usr/bin/python3")
-```
-<!-- Python imports -->
-```{python, echo=FALSE}
-# Imports
-import finviz as fv
-import yfinance as yf
-import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
-import re
-import pytz
-import datetime
-from datetime import date
-```
-
-<!--
-```{r, echo=FALSE, message=FALSE, results='hide'} 
-
-#py_run_file("main.py")
-
-```
--->
-```{python, echo=FALSE}
-TICKER = 'MSFT'
-stock_info = fv.get_stock(TICKER)
-
-mkt_profile = {
-  'Price':float(stock_info['Price']),
-  'Beta':float(stock_info['Beta']),
-  'Market Cap':str(stock_info['Market Cap']),
-  'P/E':float(stock_info['P/E']),
-  'P/B':float(stock_info['P/B']),
-  'EPS (ttm)':float(stock_info['EPS (ttm)']),
-  'ROE':str(stock_info['ROE']),
-  'ROI':str(stock_info['ROI'])}
-
-# Reticulate variables
-PRICE = mkt_profile['Price']
-BETA = mkt_profile['Beta']
-MARKET_CAP = mkt_profile['Market Cap']
-P_E = mkt_profile['P/E']
-P_B = mkt_profile['P/B']
-EPS = mkt_profile['EPS (ttm)']
-ROE = str(mkt_profile['ROE'])
-ROI = str(mkt_profile['ROI'])
-
-# Remove % sign (Latex doesn't like compiling these for some reason)
-ROE = ROE[:-1]
-ROI = ROI[:-1]
-mkt = pd.DataFrame.from_dict(mkt_profile, orient='index', columns=[''])
-
-# Format ticker news
-news = fv.get_news(TICKER)
-
-story1_date=news[0][0]
-story1_short=news[0][1]
-story1_link=news[0][2]
-
-story2_date=news[1][0]
-story2_short=news[1][1]
-story2_link=news[1][2]
-
-story3_date=news[2][0]
-story3_short=news[2][1]
-story3_link=news[2][2]
-
-story4_date=news[3][0]
-story4_short=news[3][1]
-story4_link=news[3][2]
-
-story5_date=news[4][0]
-story5_short=news[4][1]
-story5_link=news[4][2]
-
-```
-
-```{python, echo=FALSE, message=FALSE, results='hide'}
-
-### Definitions ###
-plt.rcParams.update({'font.size': 14})
-plt.xticks(rotation=25)
-
-def price_chart(ticker):
-  stock = yf.Ticker(ticker)
-  hist = stock.history(period='6mo', interval='1d')
-  df = pd.DataFrame(data=hist, columns=['Close'])
-  df.reset_index(inplace=True)
-  
-  # Plot
-  plt.plot(df['Date'], df['Close'], color='#800000')
-  plt.title(f'{ticker} Price History')
-  plt.savefig('./rif-logos/price-chart.png', bbox_inches='tight')
-  
-# Generic barplot
-def bar_plots(df, x, y, color, title, file_name):
-  fig = plt.figure(figsize = (5, 4))
-  ax = sns.barplot(data=df, x=x, y=y, color=color)
-  sns.despine()
-  plt.bar_label(ax.containers[0])
-  plt.title(title, pad=15)
-  plt.savefig(file_name, bbox_inches='tight')
-
-def stacked_bar(df, x, y1, y2, color, title, file_name):
-  fig, ax = plt.subplots(figsize=(5,4))
-  
-  ax.bar(x, y1, color=color[0], label='Revenue')
-  ax.bar(x, y2, color=color[1], bottom=y1, label='Earnings')
-  
-  ax.spines['right'].set_visible(False)
-  ax.spines['top'].set_visible(False)
-  
-  plt.bar_label(ax.containers[1])
-  ax.set_title(title, pad=15)
-  ax.legend()
-  plt.savefig(file_name, bbox_inches='tight')
-### Run ###
-
-TICKER = 'MSFT'
-stock = yf.Ticker(TICKER)
-fin = stock.financials
-bal = stock.balance_sheet
-cash = stock.cashflow
-earn = stock.earnings
-splits = stock.splits
-# Create data frames
-financial_data = pd.DataFrame(data=fin)
-balance_data = pd.DataFrame(data=bal)
-cashflow_data = pd.DataFrame(data=cash)
-earnings_data = pd.DataFrame(data=earn)
-
-# Stock Summary and News
-summary = stock.info['longBusinessSummary']
-
-# Date x-axis data
-curr_year = int(date.today().year) 
-dt = ['{}'.format(curr_year), '{}'.format(curr_year-1), '{}'.format(curr_year-2), '{}'.format(curr_year-3)]
-# Financials
-gross = [financial_data.loc['Gross Profit'][i]/1000000 for i in range(4)]
-ebit = [financial_data.loc['Ebit'][i]/1000000 for i in range(4)]
-debt_short = [balance_data.loc['Short Long Term Debt'][i]/1000000 for i in range(4)]
-debt_long = [balance_data.loc['Long Term Debt'][i]/1000000 for i in range(4)]
-revenue = [earnings_data.iloc[i][0]/1000000 for i in range(4)]
-earnings = [earnings_data.iloc[i][1]/1000000 for i in range(4)]
-
-operating_cash = cashflow_data.loc['Total Cash From Operating Activities']
-capital_expend = cashflow_data.loc['Capital Expenditures']
-fcf = []
-# Calculate Free Cash Flows (operating cash - capex)
-for (op_cash, capex) in zip(operating_cash, capital_expend):
-  fcf.append(op_cash/1000000 - capex/1000000)
-
-### Save charts ###
-print(fcf)
-
-# Financial
-price_chart(TICKER)
-bar_plots(financial_data, dt, gross, '#FEBD18', 'Gross Profit ($ millions)', './rif-logos/gross-profit.png')
-bar_plots(financial_data, dt, ebit, '#800000', 'EBIT ($ millions)', './rif-logos/ebit.png')
-
-# Balance sheet
-bar_plots(balance_data, dt, debt_short, '#800000', 'Short Long Term Debt ($ millions)', './rif-logos/debt_short.png')
-bar_plots(balance_data, dt, debt_long, '#FEBD18', 'Long Term Debt ($ millions)', './rif-logos/debt_long.png')
-
-# Cashflow
-bar_plots(cashflow_data, dt, fcf, '#FEBD18', 'Free Cash Flow ($ millions)', './rif-logos/fcf.png')
-
-# Earnings data
-stacked_bar(earnings_data, dt, revenue, earnings, ('#800000','#363636'), 'Revenue/Earnings ($ millions)', './rif-logos/revenue_earnings.png')
-```
-
 
 <!-- Start of Document -->
 
 \vspace{-0.5cm}
-
 \begin{figure}[h]
   \centering
   \includegraphics[width=8cm, height=3cm]{RIF-Logo-(MaroonTransparentBackground).png}
 \end{figure}
-
 \vspace{-0.75cm}
 
 \section*{Market Profile}
@@ -250,97 +84,93 @@ stacked_bar(earnings_data, dt, revenue, earnings, ('#800000','#363636'), 'Revenu
 \end{figure}
 
 \section*{Company Summary}
-`r py$summary`
+`r py$SUMMARY`
 
 \section*{Financials}
 
-% Rev/Gross Profits
 \begin{figure}
 \centering
 \begin{minipage}{.5\textwidth}
   \centering
   \includegraphics[width=\linewidth]{"./rif-logos/revenue_earnings.png"}
-  \label{fig:gp}
+  \label{fig:re}
 \end{minipage}%
 \begin{minipage}{.5\textwidth}
   \centering
   \includegraphics[width=\linewidth]{"./rif-logos/gross-profit.png"}
-  \label{fig:ebit}
+  \label{fig:gp}
 \end{minipage}
 \end{figure}
 
 \newpage
 
 \begin{figure}
-% FCF - EBIT 
+
 \centering
 \begin{minipage}{.5\textwidth}
   \centering
   \includegraphics[width=\linewidth]{"./rif-logos/fcf.png"}
-  \label{fig:gp}
+  \label{fig:fcf}
 \end{minipage}%
 \begin{minipage}{.5\textwidth}
   \centering
   \includegraphics[width=\linewidth]{"./rif-logos/ebit.png"}
   \label{fig:ebit}
 \end{minipage}
-% Short Debt - Long Debt
+
 \centering
 \begin{minipage}{.5\textwidth}
   \centering
   \includegraphics[width=\linewidth]{"./rif-logos/debt_short.png"}
-  \label{fig:gp}
+  \label{fig:ds}
 \end{minipage}%
 \begin{minipage}{.5\textwidth}
   \centering
   \includegraphics[width=\linewidth]{"./rif-logos/debt_long.png"}
-  \label{fig:ebit}
+  \label{fig:dl}
 \end{minipage}
 \end{figure}
 
 
 \section*{Recent News}
 
-`r py$story1_date` \null\hfill \href{`r py$story1_link`}{[Article Link]}
+`r py$STORY1_DATE` \null\hfill \href{`r py$STORY1_LINK`}{[Article Link]}
 \begin{lstlisting}
-`r py$story1_short`
+`r py$STORY1_SHORT`
 \end{lstlisting}
 
-`r py$story2_date` \null\hfill \href{`r py$story2_link`}{[Article Link]}
+`r py$STORY2_DATE` \null\hfill \href{`r py$STORY2_LINK`}{[Article Link]}
 \begin{lstlisting}
-`r py$story2_short`
+`r py$STORY2_SHORT`
 \end{lstlisting}
 
-`r py$story3_date` \null\hfill \href{`r py$story3_link`}{[Article Link]}
+`r py$STORY3_DATE` \null\hfill \href{`r py$STORY3_LINK`}{[Article Link]}
 \begin{lstlisting}
-`r py$story3_short`
+`r py$STORY3_SHORT`
 \end{lstlisting}
 
-`r py$story4_date` \null\hfill \href{`r py$story4_link`}{[Article Link]}
+`r py$STORY4_DATE` \null\hfill \href{`r py$STORY4_LINK`}{[Article Link]}
 \begin{lstlisting}
-`r py$story4_short`
+`r py$STORY4_SHORT`
 \end{lstlisting}
 
-`r py$story5_date` \null\hfill \href{`r py$story5_link`}{[Article Link]}
+`r py$STORY5_DATE` \null\hfill \href{`r py$STORY5_LINK`}{[Article Link]}
 \begin{lstlisting}
-`r py$story5_short`
+`r py$STORY5_SHORT`
 \end{lstlisting}
 
-<!--
 
-\newpage
+\section*{Sources}
+
 \begin{table}[h] 
-  \label{tab:table1} 
-  \begin{tabular}{p{3cm}p{8cm}p{8cm}}
-      \hline
-      \multicolumn{3}{c}{`r py$TICKER` News} \\
-      \hline
-      \verb|`r py$story1_date`| &  \verb|`r py$story1_short`| & \href{`r py$story1_link`}{link} \\
-      \verb|`r py$story2_date`| & \verb|`r py$story2_short`| & \href{`r py$story2_link`}{link} \\
-      \verb|`r py$story3_date`| & \verb|`r py$story3_short`| & \href{`r py$story3_link`}{link} \\
-      \verb|`r py$story4_date`| & \verb|`r py$story4_short`| & \href{`r py$story4_link`}{link} \\
-      \verb|`r py$story5_date`| & \verb|`r py$story5_short`| & \href{`r py$story5_link`}{link} \\
-      \hline
+  \label{tab:sources} 
+  \begin{tabular}{p{8cm}p{4cm}p{6cm}}
+      \multicolumn{3}{c}{} \\
+      Market Profile and News & \href{https://finviz.com/}{Finviz} &  `r py$EXACT_TIME`\\ 
+      \vspace{0.5cm} &  \vspace{0.5cm} & \vspace{0.5cm}\\
+      Company Summary and Chart Data & \href{https://finance.yahoo.com/}{Yahoo! Finance} & `r py$EXACT_TIME`\\ 
   \end{tabular}
 \end{table}
--->
+
+
+
